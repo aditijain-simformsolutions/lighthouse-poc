@@ -10,24 +10,17 @@ app.use(express.urlencoded({ extended: false }));
 
 app.post('/', async function (req, res) {
     try {
-        const chrome = await chromeLauncher.launch({ chromeFlags: ['--headless'] });
-        const options = { logLevel: 'info', output: 'html', onlyCategories: ['performance'], port: chrome.port };
-        const runnerResult = await lighthouse(req.body.site, options);
-        let data = ''
-        let ext = ''
-        if (req.query && req.query.getJSON) {
-            data = JSON.stringify(runnerResult.lhr);
-            ext = '.json';
-        } else {
-            data = runnerResult.report;
-            ext = '.html';
+        if(req.body && req.body.type && req.body.url){
+            const chrome = await chromeLauncher.launch({ chromeFlags: ['--headless']  });
+            const options = { logLevel: 'info', output: req.body.type, onlyCategories: ['performance'], port: chrome.port  };
+            const runnerResult = await lighthouse(req.body.url, options);
+            await chrome.kill();
+            console.log('Report is done for', runnerResult.lhr.finalUrl);
+            res.send(runnerResult.report);
+        }else{
+            res.send("Please pass url and type")
         }
-        fs.writeFileSync('lhreport' + ext, data);
-        let sendFile1 = '/lhreport' + ext
-
-        await chrome.kill();
-        console.log('Report is done for', runnerResult.lhr.finalUrl);
-        res.sendFile(path.join(__dirname + sendFile1));
+        
     } catch (err) {
         console.log(err)
         res.status(500).send("Something went wrong");
